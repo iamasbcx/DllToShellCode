@@ -156,16 +156,19 @@ HMODULE get_kernel32_base() {
 #else
   peb = (_PPEB)__readfsdword(0x30);
 #endif
-  LIST_ENTRY *entry = peb->pLdr->InMemoryOrderModuleList.Flink;
-  while (entry) {
+  LIST_ENTRY *head = &peb->pLdr->InMemoryOrderModuleList;
+  LIST_ENTRY *entry = head->Flink;
+  while (entry && entry != head) {
     PLDR_DATA_TABLE_ENTRY e = (PLDR_DATA_TABLE_ENTRY)entry;
-    if (calc_hashW2(e->BaseDllName.pBuffer, e->BaseDllName.Length / 2) == Kernel32Lib_Hash) {
-      return (HMODULE)e->DllBase;
+    if (e->BaseDllName.pBuffer != 0 && e->BaseDllName.Length > 0) {
+      if (calc_hashW2(e->BaseDllName.pBuffer, e->BaseDllName.Length / 2) == Kernel32Lib_Hash) {
+        return (HMODULE)e->DllBase;
+      }
     }
     entry = entry->Flink;
-}
+  }
   return 0;
-};
+}
 
 // BKDRHash
 uint32_t calc_hash(char *str) {
