@@ -183,7 +183,9 @@ int memory_loadlibrary(func_p func, void *dll_buf, void *dll_param, char *export
 	// call entry
 	if (nth->OptionalHeader.AddressOfEntryPoint != 0) {
 		pfnDllMain dllmain = cast_offset(pfnDllMain, base, nth->OptionalHeader.AddressOfEntryPoint);
-		dllmain(base, DLL_PROCESS_ATTACH, dll_param);
+		if (dllmain != 0) {
+			dllmain(base, DLL_PROCESS_ATTACH, dll_param);
+		}
 	}
 	// get export function address
 	if (export_name == 0 || function == 0) return 1;
