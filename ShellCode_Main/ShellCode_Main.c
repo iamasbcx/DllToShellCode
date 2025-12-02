@@ -1,4 +1,4 @@
-// ShellCode_Main.cpp : ¶¨Òå¿ØÖÆÌ¨Ó¦ÓÃ³ÌÐòµÄÈë¿Úµã¡£
+// ShellCode_Main.cpp : ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ì¨Ó¦ï¿½Ã³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Úµã¡£
 //
 
 #include "shellcode_base.h"
@@ -20,16 +20,16 @@ typedef unsigned int (__cdecl * _unpack)(const void *source, unsigned int srclen
 #pragma pack(push)
 #pragma pack(1)
 typedef struct main_config {
-	uint8_t invokeMode;			// 0 = µ÷ÓÃdllmain lpReserved[param], 1 = ·µ»Øµ¼³öº¯ÊýµØÖ·
-	uint32_t depackCodeOffset;	// ½âÑ¹Ëõ´úÂëÆ«ÒÆ Æ«ÒÆÁ¿»ùÓÚmain_config¿ªÊ¼
-	uint32_t unpackSize;		// Î´Ñ¹ËõÊ±µÄ´óÐ¡
-	uint32_t packedSize;		// Ñ¹ËõºóµÄ´óÐ¡
-	uint32_t dllDataOffset;		// dllÊý¾ÝÆ«ÒÆ Æ«ÒÆÁ¿»ùÓÚmain_config¿ªÊ¼
-	char param[100];			// dllmain²ÎÊý»òµ¼³öº¯ÊýÃû³Æ
+	uint8_t invokeMode;			// 0 = ï¿½ï¿½ï¿½ï¿½dllmain lpReserved[param], 1 = ï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö·
+	uint32_t depackCodeOffset;	// ï¿½ï¿½Ñ¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ«ï¿½ï¿½ Æ«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½main_configï¿½ï¿½Ê¼
+	uint32_t unpackSize;		// Î´Ñ¹ï¿½ï¿½Ê±ï¿½Ä´ï¿½Ð¡
+	uint32_t packedSize;		// Ñ¹ï¿½ï¿½ï¿½ï¿½Ä´ï¿½Ð¡
+	uint32_t dllDataOffset;		// dllï¿½ï¿½ï¿½ï¿½Æ«ï¿½ï¿½ Æ«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½main_configï¿½ï¿½Ê¼
+	char param[100];			// dllmainï¿½ï¿½ï¿½ï¿½ï¿½òµ¼³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 } main_config_t, *main_config_p;
 #pragma pack(pop)
 
-// ·ÀÖ¹VS×Ô´øµÄºêÌæ»»
+// ï¿½ï¿½Ö¹VSï¿½Ô´ï¿½ï¿½Äºï¿½ï¿½æ»»
 #ifdef RtlZeroMemory
 # undef RtlZeroMemory
 #endif  // RtlZeroMemory
@@ -173,14 +173,16 @@ int memory_loadlibrary(func_p func, void *dll_buf, void *dll_param, char *export
 	if (dataDict->VirtualAddress != 0) {
 		PIMAGE_TLS_DIRECTORY tls = cast_offset(PIMAGE_TLS_DIRECTORY, base, dataDict->VirtualAddress);
 		PIMAGE_TLS_CALLBACK *callback = (PIMAGE_TLS_CALLBACK *)tls->AddressOfCallBacks;
-		while (callback != 0) {
-			(*callback)(base, DLL_PROCESS_ATTACH, 0);
-			callback++;
+		if (callback != 0) {
+			while (*callback != 0) {
+				(*callback)(base, DLL_PROCESS_ATTACH, 0);
+				callback++;
+			}
 		}
 	}
 	// call entry
-	pfnDllMain dllmain = cast_offset(pfnDllMain, base, nth->OptionalHeader.AddressOfEntryPoint);
-	if (dllmain != 0) {
+	if (nth->OptionalHeader.AddressOfEntryPoint != 0) {
+		pfnDllMain dllmain = cast_offset(pfnDllMain, base, nth->OptionalHeader.AddressOfEntryPoint);
 		dllmain(base, DLL_PROCESS_ATTACH, dll_param);
 	}
 	// get export function address
@@ -193,7 +195,7 @@ int memory_loadlibrary(func_p func, void *dll_buf, void *dll_param, char *export
 		uint32_t *fn = cast_offset(uint32_t *, base, exportDict->AddressOfNames);
 		uint32_t *fa = cast_offset(uint32_t *, base, exportDict->AddressOfFunctions);
 		uint16_t *ord = cast_offset(uint16_t *, base, exportDict->AddressOfNameOrdinals);
-		for (uint32_t i = 0; i < exportDict->NumberOfFunctions; i++) {
+		for (uint32_t i = 0; i < exportDict->NumberOfNames; i++) {
 			char *name = cast_offset(char *, base, fn[i]);
 			if (func->lstrcmpiA(name, export_name) == 0) {
 				*function = cast_offset(void *, base, fa[ord[i]]);
@@ -213,7 +215,7 @@ void *main_main() {
 	void *dllData = (void *)((uint8_t *)config + config->dllDataOffset);
 	void *function = 0;
 	int needFree = 0;
-	// ½âÑ¹
+	// ï¿½ï¿½Ñ¹
 	if (config->depackCodeOffset != 0) {
 		_unpack unpack = (_unpack)((uint8_t *)config + config->depackCodeOffset);
 		void *unpackedData = func.VirtualAlloc(0, config->unpackSize, MEM_COMMIT, PAGE_READWRITE);
